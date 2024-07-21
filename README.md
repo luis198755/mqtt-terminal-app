@@ -1,70 +1,112 @@
-# Getting Started with Create React App
+# MQTT Manager
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## Descripción
+MQTT Manager es una aplicación web interactiva construida con React que permite a los usuarios conectarse a un broker MQTT, suscribirse a tópicos, enviar y recibir mensajes, y visualizar datos en tiempo real. La aplicación presenta una interfaz de usuario intuitiva con un diseño inspirado en terminales, ofreciendo una experiencia familiar para los usuarios técnicos.
 
-## Available Scripts
+## Características principales
+- Conexión configurable a brokers MQTT
+- Suscripción y gestión de múltiples tópicos
+- Envío y recepción de mensajes MQTT en tiempo real
+- Visualización gráfica de datos numéricos recibidos
+- Interfaz responsiva y adaptable a diferentes tamaños de pantalla
 
-In the project directory, you can run:
+## Requisitos previos
+- Node.js (versión 12.0 o superior)
+- npm (normalmente viene con Node.js)
 
-### `npm start`
+## Instalación
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+1. Clona el repositorio:
+   ```
+   git clone https://github.com/tu-usuario/mqtt-manager.git
+   cd mqtt-manager
+   ```
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+2. Instala las dependencias:
+   ```
+   npm install
+   ```
 
-### `npm test`
+3. Inicia la aplicación en modo desarrollo:
+   ```
+   npm start
+   ```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+4. Abre tu navegador y visita `http://localhost:3000`
 
-### `npm run build`
+## Uso
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+1. **Configuración de la conexión MQTT:**
+   - Ingresa los detalles del broker MQTT en los campos correspondientes.
+   - Haz clic en "Connect" para establecer la conexión.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+2. **Gestión de tópicos:**
+   - Usa el panel lateral para ver los tópicos suscritos.
+   - Ingresa un nuevo tópico en el campo de texto y haz clic en "Subscribe" para añadirlo.
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+3. **Envío de mensajes:**
+   - Selecciona un tópico de la lista.
+   - Usa la barra de entrada en la parte inferior para escribir y enviar mensajes.
 
-### `npm run eject`
+4. **Visualización de mensajes:**
+   - Los mensajes recibidos y enviados se muestran en el área central.
+   - El log de mensajes se desplaza automáticamente para mostrar los mensajes más recientes.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+5. **Gráfica de datos:**
+   - La gráfica muestra los últimos 20 valores numéricos recibidos para el tópico seleccionado.
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+6. **Desconexión:**
+   - Haz clic en "Disconnect" para cerrar la conexión con el broker MQTT.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+## Estructura del proyecto
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+```
+mqtt-manager/
+│
+├── src/
+│   ├── components/
+│   │   ├── StatusBar.js
+│   │   ├── Sidebar.js
+│   │   ├── MessageLog.js
+│   │   ├── InputBar.js
+│   │   ├── MQTTConfig.js
+│   │   └── MessageGraph.js
+│   │
+│   ├── MQTTManager.js
+│   ├── App.js
+│   └── index.js
+│
+├── public/
+│   └── index.html
+│
+├── package.json
+└── README.md
+```
 
-## Learn More
+## Diagrama de flujo
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+El siguiente diagrama muestra el flujo básico de la aplicación MQTT Manager:
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+```mermaid
+graph TD
+    A[Inicio] --> B[Configurar conexión MQTT]
+    B --> C{Conectar}
+    C -->|Éxito| D[Suscribirse a tópicos]
+    C -->|Fallo| B
+    D --> E[Esperar eventos]
+    E --> F{Tipo de evento}
+    F -->|Nuevo mensaje| G[Mostrar en log y actualizar gráfica]
+    F -->|Enviar mensaje| H[Publicar mensaje MQTT]
+    F -->|Nuevo tópico| I[Suscribirse a nuevo tópico]
+    F -->|Desconectar| J[Cerrar conexión MQTT]
+    G --> E
+    H --> E
+    I --> E
+    J --> B
+```
 
-### Code Splitting
+## Contribuciones
+Las contribuciones son bienvenidas. Por favor, abre un issue para discutir cambios mayores antes de crear un pull request.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+## Licencia
+Este proyecto está licenciado bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles.
