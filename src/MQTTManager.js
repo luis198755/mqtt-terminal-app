@@ -361,9 +361,13 @@ const MQTTConfig = ({ config, onConfigChange, onConnect, onDisconnect, connectio
       };
 
 
-    const connectMQTT = () => {
+      const connectMQTT = () => {
+        // Si hay un cliente existente, asegúrate de que esté desconectado antes de crear uno nuevo
         if (client) {
-          client.disconnect();
+          if (client.isConnected()) {
+            client.disconnect();
+          }
+          setClient(null);
         }
 
     
@@ -421,6 +425,7 @@ const MQTTConfig = ({ config, onConfigChange, onConnect, onDisconnect, connectio
       setConnectionStatus('Disconnected');
       setMessages(prev => [...prev, { type: 'system', payload: 'Disconnected from MQTT broker' }]);
     }
+    setClient(null);  // Asegúrate de limpiar la referencia al cliente
   };
 
   useEffect(() => {
