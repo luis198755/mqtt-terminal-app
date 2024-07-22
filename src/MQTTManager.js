@@ -211,129 +211,134 @@ const StatusBar = ({ connectionStatus, selectedTopic }) => (
         );
       };
 
-const MQTTConfig = ({ config, onConfigChange, onConnect, onDisconnect, connectionStatus }) => {
-    const handleChange = (e) => {
-      const { name, value } = e.target;
-      onConfigChange({ ...config, [name]: value });
-    };
-  
-    const handleFileChange = (e) => {
-      const { name, files } = e.target;
-      if (files.length > 0) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          onConfigChange({ ...config, [name]: event.target.result });
+      const MQTTConfig = ({ config, onConfigChange, onConnect, onDisconnect, connectionStatus }) => {
+        const handleChange = (e) => {
+          const { name, value } = e.target;
+          onConfigChange({ ...config, [name]: value });
         };
-        reader.readAsText(files[0]);
-      }
-    };
-  
-    return (
-      <div className="bg-gray-900 text-green-400 p-2 border-b border-green-500">
-        <div className="flex flex-wrap items-center gap-2">
-          <input
-            type="text"
-            name="host"
-            value={config.host}
-            onChange={handleChange}
-            placeholder="Broker Host"
-            className="bg-black text-green-500 border border-green-500 p-1 text-sm flex-grow"
-          />
-          <input
-            type="number"
-            name="port"
-            value={config.port}
-            onChange={handleChange}
-            placeholder="Port"
-            className="bg-black text-green-500 border border-green-500 p-1 text-sm w-20"
-          />
-          <input
-            type="text"
-            name="username"
-            value={config.username}
-            onChange={handleChange}
-            placeholder="Username"
-            className="bg-black text-green-500 border border-green-500 p-1 text-sm w-32"
-          />
-          <input
-            type="password"
-            name="password"
-            value={config.password}
-            onChange={handleChange}
-            placeholder="Password"
-            className="bg-black text-green-500 border border-green-500 p-1 text-sm w-32"
-          />
-          <input
-            type="text"
-            name="clientId"
-            value={config.clientId}
-            onChange={handleChange}
-            placeholder="Client ID"
-            className="bg-black text-green-500 border border-green-500 p-1 text-sm w-40"
-          />
-          <select
-            name="qos"
-            value={config.qos}
-            onChange={handleChange}
-            className="bg-black text-green-500 border border-green-500 p-1 text-sm w-24"
-          >
-            <option value="0">QoS 0</option>
-            <option value="1">QoS 1</option>
-            <option value="2">QoS 2</option>
-          </select>
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              name="useSSL"
-              checked={config.useSSL}
-              onChange={(e) => handleChange({ target: { name: 'useSSL', value: e.target.checked } })}
-              className="mr-2"
-            />
-            <label>Use SSL/TLS</label>
+      
+        const handleCheckboxChange = (e) => {
+          const { name, checked } = e.target;
+          onConfigChange({ ...config, [name]: checked });
+        };
+      
+        const handleFileChange = (e) => {
+          const { name, files } = e.target;
+          if (files.length > 0) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              onConfigChange({ ...config, [name]: event.target.result });
+            };
+            reader.readAsText(files[0]);
+          }
+        };
+      
+        return (
+          <div className="bg-gray-900 text-green-400 p-2 border-b border-green-500">
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="text"
+                name="host"
+                value={config.host}
+                onChange={handleChange}
+                placeholder="Broker Host"
+                className="bg-black text-green-500 border border-green-500 p-1 text-sm flex-grow"
+              />
+              <input
+                type="number"
+                name="port"
+                value={config.port}
+                onChange={handleChange}
+                placeholder="Port"
+                className="bg-black text-green-500 border border-green-500 p-1 text-sm w-20"
+              />
+              <input
+                type="text"
+                name="username"
+                value={config.username}
+                onChange={handleChange}
+                placeholder="Username"
+                className="bg-black text-green-500 border border-green-500 p-1 text-sm w-32"
+              />
+              <input
+                type="password"
+                name="password"
+                value={config.password}
+                onChange={handleChange}
+                placeholder="Password"
+                className="bg-black text-green-500 border border-green-500 p-1 text-sm w-32"
+              />
+              <input
+                type="text"
+                name="clientId"
+                value={config.clientId}
+                onChange={handleChange}
+                placeholder="Client ID"
+                className="bg-black text-green-500 border border-green-500 p-1 text-sm w-40"
+              />
+              <select
+                name="qos"
+                value={config.qos}
+                onChange={handleChange}
+                className="bg-black text-green-500 border border-green-500 p-1 text-sm w-24"
+              >
+                <option value="0">QoS 0</option>
+                <option value="1">QoS 1</option>
+                <option value="2">QoS 2</option>
+              </select>
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  name="useSSL"
+                  checked={config.useSSL}
+                  onChange={handleCheckboxChange}
+                  className="mr-2"
+                />
+                <label>Use SSL/TLS</label>
+              </div>
+              {config.useSSL && (
+                <>
+                  <input
+                    type="file"
+                    name="ca"
+                    onChange={handleFileChange}
+                    className="text-sm"
+                    accept=".pem,.crt"
+                  />
+                  <input
+                    type="file"
+                    name="cert"
+                    onChange={handleFileChange}
+                    className="text-sm"
+                    accept=".pem,.crt"
+                  />
+                  <input
+                    type="file"
+                    name="key"
+                    onChange={handleFileChange}
+                    className="text-sm"
+                    accept=".pem,.key"
+                  />
+                </>
+              )}
+              <button
+                onClick={onConnect}
+                disabled={connectionStatus === 'Connected'}
+                className="bg-green-500 text-black p-1 text-sm w-24 disabled:bg-gray-500"
+              >
+                Connect
+              </button>
+              <button
+                onClick={onDisconnect}
+                disabled={connectionStatus !== 'Connected'}
+                className="bg-red-500 text-black p-1 text-sm w-24 disabled:bg-gray-500"
+              >
+                Disconnect
+              </button>
+            </div>
           </div>
-          {config.useSSL && (
-            <>
-              <input
-                type="file"
-                name="ca"
-                onChange={handleFileChange}
-                className="text-sm"
-                accept=".pem,.crt"
-              />
-              <input
-                type="file"
-                name="cert"
-                onChange={handleFileChange}
-                className="text-sm"
-                accept=".pem,.crt"
-              />
-              <input
-                type="file"
-                name="key"
-                onChange={handleFileChange}
-                className="text-sm"
-                accept=".pem,.key"
-              />
-            </>
-          )}
-          <button
-            onClick={onConnect}
-            disabled={connectionStatus === 'Connected'}
-            className="bg-green-500 text-black p-1 text-sm w-24 disabled:bg-gray-500"
-          >
-            Connect
-          </button>
-          <button
-            onClick={onDisconnect}
-            disabled={connectionStatus !== 'Connected'}
-            className="bg-red-500 text-black p-1 text-sm w-24 disabled:bg-gray-500"
-          >
-            Disconnect
-          </button>
-        </div>
-      </div>
-    );
-  };
+        );
+      };
 
   const MQTTManager = () => {
     const [client, setClient] = useState(null);
@@ -343,12 +348,12 @@ const MQTTConfig = ({ config, onConfigChange, onConnect, onDisconnect, connectio
     const [selectedTopic, setSelectedTopic] = useState(null);
     const [mqttConfig, setMqttConfig] = useState({
       host: 'broker.emqx.io',
-      port: 8083,
+      port: 8083, // Puerto por defecto para WS
       username: '',
       password: '',
       clientId: 'clientId-' + Math.random().toString(16).substr(2, 8),
       qos: 0,
-      useSSL: false,
+      useSSL: false, // Por defecto, no usar SSL
       ca: null,
       cert: null,
       key: null
@@ -362,62 +367,61 @@ const MQTTConfig = ({ config, onConfigChange, onConnect, onDisconnect, connectio
 
 
       const connectMQTT = () => {
-        // Si hay un cliente existente, asegúrate de que esté desconectado antes de crear uno nuevo
         if (client) {
           if (client.isConnected()) {
             client.disconnect();
           }
           setClient(null);
         }
-
-    
-
+      
         const protocol = mqttConfig.useSSL ? 'wss' : 'ws';
+        const port = mqttConfig.useSSL ? 8084 : 8083; // Puertos estándar para MQTT sobre WSS y WS
+      
         const mqttClient = new Client(
-          `${protocol}://${mqttConfig.host}:${mqttConfig.port}/mqtt`,
+          `${protocol}://${mqttConfig.host}:${port}/mqtt`,
           mqttConfig.clientId
         );
-    
-        mqttClient.onConnectionLost = (responseObject) => {
-            if (responseObject.errorCode !== 0) {
-              setConnectionStatus('Disconnected');
-              setMessages(prev => [...prev, { type: 'error', payload: 'Connection lost: ' + responseObject.errorMessage }]);
-            }
-          };
-
-          mqttClient.onMessageArrived = (message) => {
-            setMessages(prev => [...prev, { 
-              type: 'received', 
-              topic: message.destinationName, 
-              payload: message.payloadString 
-            }].slice(-50));
-          };
-
-          const connectOptions = {
-            onSuccess: () => {
-              setConnectionStatus('Connected');
-              topics.forEach(topic => mqttClient.subscribe(topic, { qos: parseInt(mqttConfig.qos) }));
-              setMessages(prev => [...prev, { type: 'system', payload: 'Connected to MQTT broker' }]);
-            },
-            onFailure: (error) => {
-              setConnectionStatus('Connection failed');
-              setMessages(prev => [...prev, { type: 'error', payload: 'Connection failed: ' + error.errorMessage }]);
-            },
-            userName: mqttConfig.username,
-            password: mqttConfig.password,
-            useSSL: mqttConfig.useSSL,
-          };
-
-          if (mqttConfig.useSSL) {
-            connectOptions.sslProperties = {};
-            if (mqttConfig.ca) connectOptions.sslProperties.ca = [mqttConfig.ca];
-            if (mqttConfig.cert) connectOptions.sslProperties.cert = [mqttConfig.cert];
-            if (mqttConfig.key) connectOptions.sslProperties.key = [mqttConfig.key];
-          }
       
-          mqttClient.connect(connectOptions);
-          setClient(mqttClient);
-  };
+        mqttClient.onConnectionLost = (responseObject) => {
+          if (responseObject.errorCode !== 0) {
+            setConnectionStatus('Disconnected');
+            setMessages(prev => [...prev, { type: 'error', payload: 'Connection lost: ' + responseObject.errorMessage }]);
+          }
+        };
+      
+        mqttClient.onMessageArrived = (message) => {
+          setMessages(prev => [...prev, { 
+            type: 'received', 
+            topic: message.destinationName, 
+            payload: message.payloadString 
+          }].slice(-50));
+        };
+      
+        const connectOptions = {
+          onSuccess: () => {
+            setConnectionStatus('Connected');
+            topics.forEach(topic => mqttClient.subscribe(topic, { qos: parseInt(mqttConfig.qos) }));
+            setMessages(prev => [...prev, { type: 'system', payload: 'Connected to MQTT broker' }]);
+          },
+          onFailure: (error) => {
+            setConnectionStatus('Connection failed');
+            setMessages(prev => [...prev, { type: 'error', payload: 'Connection failed: ' + error.errorMessage }]);
+          },
+          userName: mqttConfig.username,
+          password: mqttConfig.password,
+          useSSL: mqttConfig.useSSL,
+        };
+      
+        if (mqttConfig.useSSL) {
+          connectOptions.sslProperties = {};
+          if (mqttConfig.ca) connectOptions.sslProperties.ca = [mqttConfig.ca];
+          if (mqttConfig.cert) connectOptions.sslProperties.cert = [mqttConfig.cert];
+          if (mqttConfig.key) connectOptions.sslProperties.key = [mqttConfig.key];
+        }
+      
+        mqttClient.connect(connectOptions);
+        setClient(mqttClient);
+      };
 
   const disconnectMQTT = () => {
     if (client && client.isConnected()) {
