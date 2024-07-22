@@ -1,7 +1,59 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Client } from 'paho-mqtt';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import AceEditor from 'react-ace';
+import Ajv from 'ajv';
 
+// Importaciones explícitas para Ace
+import 'ace-builds/src-noconflict/mode-json';
+import 'ace-builds/src-noconflict/theme-monokai';
+import 'ace-builds/src-noconflict/ext-language_tools';
+
+const AdvancedPayloadEditor = ({ payload, onChange, onValidate }) => {
+    const [editorValue, setEditorValue] = useState(payload);
+    const [isValid, setIsValid] = useState(true);
+    const ajv = new Ajv();
+  
+    const handleChange = (newValue) => {
+      setEditorValue(newValue);
+      onChange(newValue);
+      validateJSON(newValue);
+    };
+  
+    const validateJSON = (value) => {
+      try {
+        const parsedJSON = JSON.parse(value);
+        const valid = ajv.validate({type: "object"}, parsedJSON);
+        setIsValid(valid);
+        onValidate(valid);
+      } catch (error) {
+        setIsValid(false);
+        onValidate(false);
+      }
+    };
+  
+    return (
+      <div className="mb-2">
+        <AceEditor
+          mode="json"
+          theme="monokai"
+          onChange={handleChange}
+          value={editorValue}
+          name="UNIQUE_ID_OF_DIV"
+          editorProps={{ $blockScrolling: true }}
+          setOptions={{
+            useWorker: false, // Desactivar el worker
+            showLineNumbers: true,
+            tabSize: 2,
+          }}
+          style={{ width: '100%', height: '200px' }}
+        />
+        <div className={`mt-1 text-sm ${isValid ? 'text-green-500' : 'text-red-500'}`}>
+          {isValid ? 'JSON is valid' : 'Invalid JSON'}
+        </div>
+      </div>
+    );
+  };
 
 const StatusBar = ({ connectionStatus, selectedTopic }) => (
     <div className="bg-black text-green-500 p-1 text-xs border-b border-green-500 flex justify-between">
@@ -80,34 +132,65 @@ const StatusBar = ({ connectionStatus, selectedTopic }) => (
         );
       };
 
-const InputBar = ({ onSendMessage, selectedTopic }) => {
-  const [message, setMessage] = useState('');
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (selectedTopic && message.trim()) {
-      onSendMessage(selectedTopic, message.trim());
-      setMessage('');
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="bg-black p-2 border-t border-green-500">
-      <div className="flex items-center text-green-500">
-        <span className="mr-2">mqtt@localhost:~$</span>
-        <input
-          type="text"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder={selectedTopic ? `Type message for ${selectedTopic}...` : 'Select a topic first'}
-          className="flex-grow bg-black text-green-500 focus:outline-none"
-          disabled={!selectedTopic}
-          autoFocus
-        />
-      </div>
-    </form>
-  );
-};
+      const InputBar = ({ onSendMessage, selectedTopic }) => {
+        const [message, setMessage] = useState('');
+        const [payloadType, setPayloadType] = useState('text');
+        const [isPayloadValid, setIsPayloadValid] = useState(true);
+      
+        const handleSubmit = (e) => {
+          e.preventDefault();
+          if (selectedTopic && message.trim() && isPayloadValid) {
+            onSendMessage(selectedTopic, message.trim(), payloadType);
+            setMessage('');
+          }
+        };
+      
+        const handlePayloadTypeChange = (e) => {
+          setPayloadType(e.target.value);
+          setMessage(e.target.value === 'json' ? '{\n\n}' : '');
+        };
+      
+        return (
+          <form onSubmit={handleSubmit} className="bg-black p-2 border-t border-green-500">
+            <div className="mb-2">
+              <select
+                value={payloadType}
+                onChange={handlePayloadTypeChange}
+                className="bg-black text-green-500 border border-green-500 p-1"
+              >
+                <option value="text">Text</option>
+                <option value="json">JSON</option>
+              </select>
+            </div>
+            {payloadType === 'json' ? (
+              <AdvancedPayloadEditor
+                payload={message}
+                onChange={setMessage}
+                onValidate={setIsPayloadValid}
+              />
+            ) : (
+              <div className="flex items-center text-green-500">
+                <span className="mr-2">mqtt@localhost:~$</span>
+                <input
+                  type="text"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder={selectedTopic ? `Type message for ${selectedTopic}...` : 'Select a topic first'}
+                  className="flex-grow bg-black text-green-500 focus:outline-none"
+                  disabled={!selectedTopic}
+                />
+              </div>
+            )}
+            <button
+              type="submit"
+              disabled={!selectedTopic || !message.trim() || !isPayloadValid}
+              className="bg-green-500 text-black p-1 mt-2 w-full disabled:bg-gray-500"
+            >
+              Send
+            </button>
+          </form>
+        );
+      };
 
 const MQTTConfig = ({ config, onConfigChange, onConnect, onDisconnect, connectionStatus }) => {
     const handleChange = (e) => {
@@ -336,13 +419,17 @@ const MQTTConfig = ({ config, onConfigChange, onConnect, onDisconnect, connectio
     setSelectedTopic(topic);
   };
 
-  const handleSendMessage = (topic, payload) => {
+  const handleSendMessage = (topic, payload, payloadType) => {
     if (client && client.isConnected()) {
-      client.send(topic, payload, parseInt(mqttConfig.qos), false);
+      let messageToSend = payload;
+      if (payloadType === 'json') {
+        messageToSend = JSON.stringify(JSON.parse(payload), null, 2);
+      }
+      client.send(topic, messageToSend, parseInt(mqttConfig.qos), false);
       setMessages(prev => [...prev, { 
         type: 'sent', 
         topic: topic, 
-        payload: payload 
+        payload: messageToSend 
       }]);
     } else {
       setMessages(prev => [...prev, { type: 'error', payload: 'Not connected to MQTT broker' }]);
