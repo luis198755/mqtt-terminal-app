@@ -4,7 +4,6 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import AceEditor from 'react-ace';
 import Ajv from 'ajv';
 
-// Importaciones explícitas para Ace
 import 'ace-builds/src-noconflict/mode-json';
 import 'ace-builds/src-noconflict/theme-monokai';
 import 'ace-builds/src-noconflict/ext-language_tools';
@@ -132,7 +131,7 @@ const StatusBar = ({ connectionStatus, selectedTopic }) => (
         );
       };
 
-      const InputBar = ({ onSendMessage, selectedTopic }) => {
+      const InputBar = ({ onSendMessage, selectedTopic, onPayloadTypeChange }) => {
         const [message, setMessage] = useState('');
         const [payloadType, setPayloadType] = useState('text');
         const [isPayloadValid, setIsPayloadValid] = useState(true);
@@ -146,51 +145,53 @@ const StatusBar = ({ connectionStatus, selectedTopic }) => (
         };
       
         const handlePayloadTypeChange = (e) => {
-          setPayloadType(e.target.value);
-          setMessage(e.target.value === 'json' ? '{\n\n}' : '');
-        };
+            const newPayloadType = e.target.value;
+            setPayloadType(newPayloadType);
+            setMessage(newPayloadType === 'json' ? '{\n\n}' : '');
+            onPayloadTypeChange(newPayloadType);
+          };
       
-        return (
-          <form onSubmit={handleSubmit} className="bg-black p-2 border-t border-green-500">
-            <div className="mb-2">
-              <select
-                value={payloadType}
-                onChange={handlePayloadTypeChange}
-                className="bg-black text-green-500 border border-green-500 p-1"
-              >
-                <option value="text">Text</option>
-                <option value="json">JSON</option>
-              </select>
-            </div>
-            {payloadType === 'json' ? (
-              <AdvancedPayloadEditor
-                payload={message}
-                onChange={setMessage}
-                onValidate={setIsPayloadValid}
-              />
-            ) : (
-              <div className="flex items-center text-green-500">
-                <span className="mr-2">mqtt@localhost:~$</span>
-                <input
-                  type="text"
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder={selectedTopic ? `Type message for ${selectedTopic}...` : 'Select a topic first'}
-                  className="flex-grow bg-black text-green-500 focus:outline-none"
-                  disabled={!selectedTopic}
-                />
+          return (
+            <form onSubmit={handleSubmit} className="bg-black p-2 border-t border-green-500">
+              <div className="mb-2">
+                <select
+                  value={payloadType}
+                  onChange={handlePayloadTypeChange}
+                  className="bg-black text-green-500 border border-green-500 p-1"
+                >
+                  <option value="text">Text</option>
+                  <option value="json">JSON</option>
+                </select>
               </div>
-            )}
-            <button
-              type="submit"
-              disabled={!selectedTopic || !message.trim() || !isPayloadValid}
-              className="bg-green-500 text-black p-1 mt-2 w-full disabled:bg-gray-500"
-            >
-              Send
-            </button>
-          </form>
-        );
-      };
+              {payloadType === 'json' ? (
+                <AdvancedPayloadEditor
+                  payload={message}
+                  onChange={setMessage}
+                  onValidate={setIsPayloadValid}
+                />
+              ) : (
+                <div className="flex items-center text-green-500">
+                  <span className="mr-2">mqtt@localhost:~$</span>
+                  <input
+                    type="text"
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder={selectedTopic ? `Type message for ${selectedTopic}...` : 'Select a topic first'}
+                    className="flex-grow bg-black text-green-500 focus:outline-none"
+                    disabled={!selectedTopic}
+                  />
+                </div>
+              )}
+              <button
+                type="submit"
+                disabled={!selectedTopic || !message.trim() || !isPayloadValid}
+                className="bg-green-500 text-black p-1 mt-2 w-full disabled:bg-gray-500"
+              >
+                Send
+              </button>
+            </form>
+          );
+        };
 
 const MQTTConfig = ({ config, onConfigChange, onConnect, onDisconnect, connectionStatus }) => {
     const handleChange = (e) => {
@@ -335,6 +336,13 @@ const MQTTConfig = ({ config, onConfigChange, onConnect, onDisconnect, connectio
       key: null
     });
 
+    const [showGraph, setShowGraph] = useState(true);
+
+    const handlePayloadTypeChange = (payloadType) => {
+        setShowGraph(payloadType === 'text');
+      };
+
+
     const connectMQTT = () => {
         if (client) {
           client.disconnect();
@@ -455,8 +463,16 @@ const MQTTConfig = ({ config, onConfigChange, onConnect, onDisconnect, connectio
         />
         <div className="flex flex-col flex-grow overflow-hidden">
           <MessageLog messages={messages} />
-          <MessageGraph messages={messages} selectedTopic={selectedTopic} />
-          <InputBar onSendMessage={handleSendMessage} selectedTopic={selectedTopic} />
+          <MessageGraph 
+            messages={messages} 
+            selectedTopic={selectedTopic} 
+            visible={showGraph}
+          />
+          <InputBar 
+            onSendMessage={handleSendMessage} 
+            selectedTopic={selectedTopic}
+            onPayloadTypeChange={handlePayloadTypeChange}
+          />
         </div>
       </div>
     </div>
@@ -464,7 +480,7 @@ const MQTTConfig = ({ config, onConfigChange, onConnect, onDisconnect, connectio
 };
 
 
-const MessageGraph = ({ messages, selectedTopic }) => {
+const MessageGraph = ({ messages, selectedTopic, visible }) => {
     const filteredMessages = messages
       .filter(msg => msg.topic === selectedTopic && msg.type === 'received' && !isNaN(parseFloat(msg.payload)))
       .slice(-20)
@@ -472,9 +488,12 @@ const MessageGraph = ({ messages, selectedTopic }) => {
         index,
         value: parseFloat(msg.payload)
       }));
+
+      if (!visible) return null;
+
   
-    return (
-      <div className="bg-gray-900 p-2 border-t border-green-500 h-1/3 min-h-[200px]">
+      return (
+        <div className="bg-gray-900 p-2 border-t border-green-500 h-1/3 min-h-[200px]">
         <h3 className="text-green-500 mb-2">Graph for {selectedTopic}</h3>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={filteredMessages}>
