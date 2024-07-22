@@ -115,6 +115,17 @@ const MQTTConfig = ({ config, onConfigChange, onConnect, onDisconnect, connectio
       onConfigChange({ ...config, [name]: value });
     };
   
+    const handleFileChange = (e) => {
+      const { name, files } = e.target;
+      if (files.length > 0) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          onConfigChange({ ...config, [name]: event.target.result });
+        };
+        reader.readAsText(files[0]);
+      }
+    };
+  
     return (
       <div className="bg-gray-900 text-green-400 p-2 border-b border-green-500">
         <div className="flex flex-wrap items-center gap-2">
@@ -168,6 +179,41 @@ const MQTTConfig = ({ config, onConfigChange, onConnect, onDisconnect, connectio
             <option value="1">QoS 1</option>
             <option value="2">QoS 2</option>
           </select>
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              name="useSSL"
+              checked={config.useSSL}
+              onChange={(e) => handleChange({ target: { name: 'useSSL', value: e.target.checked } })}
+              className="mr-2"
+            />
+            <label>Use SSL/TLS</label>
+          </div>
+          {config.useSSL && (
+            <>
+              <input
+                type="file"
+                name="ca"
+                onChange={handleFileChange}
+                className="text-sm"
+                accept=".pem,.crt"
+              />
+              <input
+                type="file"
+                name="cert"
+                onChange={handleFileChange}
+                className="text-sm"
+                accept=".pem,.crt"
+              />
+              <input
+                type="file"
+                name="key"
+                onChange={handleFileChange}
+                className="text-sm"
+                accept=".pem,.key"
+              />
+            </>
+          )}
           <button
             onClick={onConnect}
             disabled={connectionStatus === 'Connected'}
@@ -199,50 +245,65 @@ const MQTTConfig = ({ config, onConfigChange, onConnect, onDisconnect, connectio
       username: '',
       password: '',
       clientId: 'clientId-' + Math.random().toString(16).substr(2, 8),
-      qos: 0
+      qos: 0,
+      useSSL: false,
+      ca: null,
+      cert: null,
+      key: null
     });
 
-  const connectMQTT = () => {
-    if (client) {
-      client.disconnect();
-    }
+    const connectMQTT = () => {
+        if (client) {
+          client.disconnect();
+        }
 
-    const mqttClient = new Client(
-      `ws://${mqttConfig.host}:${mqttConfig.port}/mqtt`,
-      mqttConfig.clientId
-    );
     
-    mqttClient.onConnectionLost = (responseObject) => {
-      if (responseObject.errorCode !== 0) {
-        setConnectionStatus('Disconnected');
-        setMessages(prev => [...prev, { type: 'error', payload: 'Connection lost: ' + responseObject.errorMessage }]);
-      }
-    };
 
-    mqttClient.onMessageArrived = (message) => {
-      setMessages(prev => [...prev, { 
-        type: 'received', 
-        topic: message.destinationName, 
-        payload: message.payloadString 
-      }].slice(-50));
-    };
+        const protocol = mqttConfig.useSSL ? 'wss' : 'ws';
+        const mqttClient = new Client(
+          `${protocol}://${mqttConfig.host}:${mqttConfig.port}/mqtt`,
+          mqttConfig.clientId
+        );
+    
+        mqttClient.onConnectionLost = (responseObject) => {
+            if (responseObject.errorCode !== 0) {
+              setConnectionStatus('Disconnected');
+              setMessages(prev => [...prev, { type: 'error', payload: 'Connection lost: ' + responseObject.errorMessage }]);
+            }
+          };
 
-    const connectOptions = {
-      onSuccess: () => {
-        setConnectionStatus('Connected');
-        topics.forEach(topic => mqttClient.subscribe(topic, { qos: parseInt(mqttConfig.qos) }));
-        setMessages(prev => [...prev, { type: 'system', payload: 'Connected to MQTT broker' }]);
-      },
-      onFailure: (error) => {
-        setConnectionStatus('Connection failed');
-        setMessages(prev => [...prev, { type: 'error', payload: 'Connection failed: ' + error.errorMessage }]);
-      },
-      userName: mqttConfig.username,
-      password: mqttConfig.password,
-    };
+          mqttClient.onMessageArrived = (message) => {
+            setMessages(prev => [...prev, { 
+              type: 'received', 
+              topic: message.destinationName, 
+              payload: message.payloadString 
+            }].slice(-50));
+          };
 
-    mqttClient.connect(connectOptions);
-    setClient(mqttClient);
+          const connectOptions = {
+            onSuccess: () => {
+              setConnectionStatus('Connected');
+              topics.forEach(topic => mqttClient.subscribe(topic, { qos: parseInt(mqttConfig.qos) }));
+              setMessages(prev => [...prev, { type: 'system', payload: 'Connected to MQTT broker' }]);
+            },
+            onFailure: (error) => {
+              setConnectionStatus('Connection failed');
+              setMessages(prev => [...prev, { type: 'error', payload: 'Connection failed: ' + error.errorMessage }]);
+            },
+            userName: mqttConfig.username,
+            password: mqttConfig.password,
+            useSSL: mqttConfig.useSSL,
+          };
+
+          if (mqttConfig.useSSL) {
+            connectOptions.sslProperties = {};
+            if (mqttConfig.ca) connectOptions.sslProperties.ca = [mqttConfig.ca];
+            if (mqttConfig.cert) connectOptions.sslProperties.cert = [mqttConfig.cert];
+            if (mqttConfig.key) connectOptions.sslProperties.key = [mqttConfig.key];
+          }
+      
+          mqttClient.connect(connectOptions);
+          setClient(mqttClient);
   };
 
   const disconnectMQTT = () => {
