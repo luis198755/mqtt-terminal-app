@@ -211,8 +211,8 @@ const StatusBar = ({ connectionStatus, selectedTopic }) => (
         );
       };
 
-const MQTTConfig = ({ config, onConfigChange, onConnect, onDisconnect, connectionStatus }) => {
-    const handleChange = (e) => {
+    const MQTTConfig = ({ config, onConfigChange, onConnect, onDisconnect, connectionStatus }) => {
+        const handleChange = (e) => {
       const { name, value } = e.target;
       onConfigChange({ ...config, [name]: value });
     };
@@ -291,6 +291,16 @@ const MQTTConfig = ({ config, onConfigChange, onConnect, onDisconnect, connectio
             />
             <label>Use SSL/TLS</label>
           </div>
+          <div className="flex items-center">
+          <input
+            type="checkbox"
+            name="useSecureWebSocket"
+            checked={config.useSecureWebSocket}
+            onChange={(e) => handleChange({ target: { name: 'useSecureWebSocket', value: e.target.checked } })}
+            className="mr-2"
+          />
+          <label>Use Secure WebSocket</label>
+        </div>
           {config.useSSL && (
             <>
               <input
@@ -341,6 +351,7 @@ const MQTTConfig = ({ config, onConfigChange, onConnect, onDisconnect, connectio
     const [topics, setTopics] = useState(['sensor/temperature', 'sensor/humidity', 'control/led']);
     const [messages, setMessages] = useState([]);
     const [selectedTopic, setSelectedTopic] = useState(null);
+    const [showGraph, setShowGraph] = useState(true);
     const [mqttConfig, setMqttConfig] = useState({
       host: 'broker.emqx.io',
       port: 8083,
@@ -349,118 +360,121 @@ const MQTTConfig = ({ config, onConfigChange, onConnect, onDisconnect, connectio
       clientId: 'clientId-' + Math.random().toString(16).substr(2, 8),
       qos: 0,
       useSSL: false,
+      useSecureWebSocket: window.location.protocol === 'https:',
       ca: null,
       cert: null,
       key: null
     });
-
-    const [showGraph, setShowGraph] = useState(true);
-
-    const handlePayloadTypeChange = (payloadType) => {
-        setShowGraph(payloadType === 'text');
-      };
-
-
+  
     const connectMQTT = () => {
-        if (client) {
-          client.disconnect();
-        }
-
-    
-
-        const protocol = mqttConfig.useSSL ? 'wss' : 'ws';
-        const mqttClient = new Client(
-          `${protocol}://${mqttConfig.host}:${mqttConfig.port}/mqtt`,
-          mqttConfig.clientId
-        );
-    
-        mqttClient.onConnectionLost = (responseObject) => {
-            if (responseObject.errorCode !== 0) {
-              setConnectionStatus('Disconnected');
-              setMessages(prev => [...prev, { type: 'error', payload: 'Connection lost: ' + responseObject.errorMessage }]);
-            }
-          };
-
-          mqttClient.onMessageArrived = (message) => {
-            setMessages(prev => [...prev, { 
-              type: 'received', 
-              topic: message.destinationName, 
-              payload: message.payloadString 
-            }].slice(-50));
-          };
-
-          const connectOptions = {
-            onSuccess: () => {
-              setConnectionStatus('Connected');
-              topics.forEach(topic => mqttClient.subscribe(topic, { qos: parseInt(mqttConfig.qos) }));
-              setMessages(prev => [...prev, { type: 'system', payload: 'Connected to MQTT broker' }]);
-            },
-            onFailure: (error) => {
-              setConnectionStatus('Connection failed');
-              setMessages(prev => [...prev, { type: 'error', payload: 'Connection failed: ' + error.errorMessage }]);
-            },
-            userName: mqttConfig.username,
-            password: mqttConfig.password,
-            useSSL: mqttConfig.useSSL,
-          };
-
-          if (mqttConfig.useSSL) {
-            connectOptions.sslProperties = {};
-            if (mqttConfig.ca) connectOptions.sslProperties.ca = [mqttConfig.ca];
-            if (mqttConfig.cert) connectOptions.sslProperties.cert = [mqttConfig.cert];
-            if (mqttConfig.key) connectOptions.sslProperties.key = [mqttConfig.key];
-          }
-      
-          mqttClient.connect(connectOptions);
-          setClient(mqttClient);
-  };
-
-  const disconnectMQTT = () => {
-    if (client && client.isConnected()) {
-      client.disconnect();
-      setConnectionStatus('Disconnected');
-      setMessages(prev => [...prev, { type: 'system', payload: 'Disconnected from MQTT broker' }]);
-    }
-  };
-
-  useEffect(() => {
-    return () => {
-      if (client && client.isConnected()) {
+      if (client) {
         client.disconnect();
       }
-    };
-  }, [client]);
-
-  const handleAddTopic = (newTopic) => {
-    if (client && client.isConnected()) {
-      client.subscribe(newTopic, { qos: parseInt(mqttConfig.qos) });
-      setTopics(prev => [...prev, newTopic]);
-      setMessages(prev => [...prev, { type: 'system', payload: `Subscribed to ${newTopic}` }]);
-    } else {
-      setMessages(prev => [...prev, { type: 'error', payload: 'Not connected to MQTT broker' }]);
-    }
-  };
-
-  const handleSelectTopic = (topic) => {
-    setSelectedTopic(topic);
-  };
-
-  const handleSendMessage = (topic, payload, payloadType) => {
-    if (client && client.isConnected()) {
-      let messageToSend = payload;
-      if (payloadType === 'json') {
-        messageToSend = JSON.stringify(JSON.parse(payload), null, 2);
+  
+      const protocol = mqttConfig.useSecureWebSocket ? 'wss' : 'ws';
+      const port = mqttConfig.useSecureWebSocket ? (mqttConfig.port === 8083 ? 8084 : mqttConfig.port) : mqttConfig.port;
+      
+      const mqttClient = new Client(
+        `${protocol}://${mqttConfig.host}:${port}/mqtt`,
+        mqttConfig.clientId
+      );
+      
+      mqttClient.onConnectionLost = (responseObject) => {
+        if (responseObject.errorCode !== 0) {
+          setConnectionStatus('Disconnected');
+          setMessages(prev => [...prev, { type: 'error', payload: 'Connection lost: ' + responseObject.errorMessage }]);
+        }
+      };
+  
+      mqttClient.onMessageArrived = (message) => {
+        setMessages(prev => [...prev, { 
+          type: 'received', 
+          topic: message.destinationName, 
+          payload: message.payloadString 
+        }].slice(-50));
+      };
+  
+      const connectOptions = {
+        onSuccess: () => {
+          setConnectionStatus('Connected');
+          topics.forEach(topic => mqttClient.subscribe(topic, { qos: parseInt(mqttConfig.qos) }));
+          setMessages(prev => [...prev, { type: 'system', payload: 'Connected to MQTT broker' }]);
+        },
+        onFailure: (error) => {
+          setConnectionStatus('Connection failed');
+          setMessages(prev => [...prev, { type: 'error', payload: 'Connection failed: ' + error.errorMessage }]);
+        },
+        userName: mqttConfig.username,
+        password: mqttConfig.password,
+        useSSL: mqttConfig.useSSL || mqttConfig.useSecureWebSocket,
+      };
+  
+      if (mqttConfig.useSSL) {
+        connectOptions.sslProperties = {};
+        if (mqttConfig.ca) connectOptions.sslProperties.ca = [mqttConfig.ca];
+        if (mqttConfig.cert) connectOptions.sslProperties.cert = [mqttConfig.cert];
+        if (mqttConfig.key) connectOptions.sslProperties.key = [mqttConfig.key];
       }
-      client.send(topic, messageToSend, parseInt(mqttConfig.qos), false);
-      setMessages(prev => [...prev, { 
-        type: 'sent', 
-        topic: topic, 
-        payload: messageToSend 
-      }]);
-    } else {
-      setMessages(prev => [...prev, { type: 'error', payload: 'Not connected to MQTT broker' }]);
-    }
-  };
+  
+      mqttClient.connect(connectOptions);
+      setClient(mqttClient);
+    };
+  
+    const disconnectMQTT = () => {
+      if (client && client.isConnected()) {
+        client.disconnect();
+        setConnectionStatus('Disconnected');
+        setMessages(prev => [...prev, { type: 'system', payload: 'Disconnected from MQTT broker' }]);
+      }
+    };
+  
+    useEffect(() => {
+      return () => {
+        if (client && client.isConnected()) {
+          client.disconnect();
+        }
+      };
+    }, [client]);
+  
+    const handleAddTopic = (newTopic) => {
+      if (client && client.isConnected()) {
+        client.subscribe(newTopic, { qos: parseInt(mqttConfig.qos) });
+        setTopics(prev => [...prev, newTopic]);
+        setMessages(prev => [...prev, { type: 'system', payload: `Subscribed to ${newTopic}` }]);
+      } else {
+        setMessages(prev => [...prev, { type: 'error', payload: 'Not connected to MQTT broker' }]);
+      }
+    };
+  
+    const handleSelectTopic = (topic) => {
+      setSelectedTopic(topic);
+    };
+  
+    const handleSendMessage = (topic, payload, payloadType) => {
+      if (client && client.isConnected()) {
+        let messageToSend = payload;
+        if (payloadType === 'json') {
+          try {
+            messageToSend = JSON.stringify(JSON.parse(payload));
+          } catch (error) {
+            setMessages(prev => [...prev, { type: 'error', payload: 'Invalid JSON: ' + error.message }]);
+            return;
+          }
+        }
+        client.send(topic, messageToSend, parseInt(mqttConfig.qos), false);
+        setMessages(prev => [...prev, { 
+          type: 'sent', 
+          topic: topic, 
+          payload: messageToSend 
+        }]);
+      } else {
+        setMessages(prev => [...prev, { type: 'error', payload: 'Not connected to MQTT broker' }]);
+      }
+    };
+  
+    const handlePayloadTypeChange = (payloadType) => {
+      setShowGraph(payloadType === 'text');
+    };
 
   return (
     <div className="flex flex-col h-screen text-sm bg-black font-mono">
